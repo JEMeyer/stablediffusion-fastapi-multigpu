@@ -1,0 +1,10 @@
+fastapi[all]==0.103.2
+uvicorn==0.23.2
+accelerate==0.23.0
+diffusers==0.21.4
+aiohttp==3.8.6
+transformers==4.34.0
+python-multipart==0.0.6
+Pillow==10.0.1
+torch==2.1.0+cu118
+xformers==0.0.23.dev639
