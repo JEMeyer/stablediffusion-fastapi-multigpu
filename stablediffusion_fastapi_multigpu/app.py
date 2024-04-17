@@ -66,7 +66,7 @@ def load_xl_model():
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Load your model and assign it to available GPUs
-num_gpus = torch.cuda.device_count()
+num_gpus = 1 #torch.cuda.device_count()
 models = [load_xl_model().to(f"cuda:{i}") for i in range(num_gpus)]
 
 # Locks for managing concurrent access to GPUs
