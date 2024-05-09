@@ -89,7 +89,7 @@ async def txt2img(input_data: GenerateImageInput):
                 pipe = txt2img_pipes[gpu_id]
 
                 image = pipe(
-                    prompt=input_data.prompt, num_inference_steps=1, guidance_scale=0.0
+                    prompt=input_data.prompt, num_inference_steps=4, guidance_scale=0.0
                 ).images[0]
 
             # Convert image to bytes
@@ -141,7 +141,7 @@ async def img2img(input_data: GenerateImageInput, image: UploadFile):
                 image = pipe(
                     prompt=input_data.prompt,
                     image=init_image,
-                    num_inference_steps=2,
+                    num_inference_steps=4,
                     strength=0.5,
                     guidance_scale=0.0,
                 ).images[0]
