@@ -42,19 +42,19 @@ txt2img_pipes = [
     ).to(f"cuda:{i}")
     for i in range(num_gpus)
 ]
-img2img_pipes = [
-    AutoPipelineForImage2Image.from_pretrained(
-        model_name,
-        vae=txt2img_pipes[i].vae,
-        text_encoder=txt2img_pipes[i].text_encoder,
-        tokenizer=txt2img_pipes[i].tokenizer,
-        unet=txt2img_pipes[i].unet,
-        scheduler=txt2img_pipes[i].scheduler,
-        safety_checker=None,
-        feature_extractor=None,
-    ).to(f"cuda:{i}")
-    for i in range(num_gpus)
-]
+# img2img_pipes = [
+#     AutoPipelineForImage2Image.from_pretrained(
+#         model_name,
+#         vae=txt2img_pipes[i].vae,
+#         text_encoder=txt2img_pipes[i].text_encoder,
+#         tokenizer=txt2img_pipes[i].tokenizer,
+#         unet=txt2img_pipes[i].unet,
+#         scheduler=txt2img_pipes[i].scheduler,
+#         safety_checker=None,
+#         feature_extractor=None,
+#     ).to(f"cuda:{i}")
+#     for i in range(num_gpus)
+# ]
 
 # Locks for managing concurrent access to GPUs
 gpu_locks = [asyncio.Lock() for _ in range(num_gpus)]
@@ -118,55 +118,55 @@ async def txt2img(input_data: GenerateImageInput):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/img2img")
-async def img2img(input_data: GenerateImageInput, image: UploadFile):
-    global current_gpu
+# @app.post("/img2img")
+# async def img2img(input_data: GenerateImageInput, image: UploadFile):
+#     global current_gpu
 
-    try:
-        # Select a GPU using round-robin
-        gpu_id = current_gpu % num_gpus
+#     try:
+#         # Select a GPU using round-robin
+#         gpu_id = current_gpu % num_gpus
 
-        # Update the GPU counter
-        current_gpu += 1
+#         # Update the GPU counter
+#         current_gpu += 1
 
-        # Lock the selected GPU to prevent other requests from using it simultaneously
-        async with gpu_locks[gpu_id]:
-            # Ensure no gradients are calculated for faster inference
-            with torch.no_grad():
-                # Ensure to use the selected GPU for computations
-                pipe = img2img_pipes[gpu_id]
+#         # Lock the selected GPU to prevent other requests from using it simultaneously
+#         async with gpu_locks[gpu_id]:
+#             # Ensure no gradients are calculated for faster inference
+#             with torch.no_grad():
+#                 # Ensure to use the selected GPU for computations
+#                 pipe = img2img_pipes[gpu_id]
 
-                init_image = await image.read()
+#                 init_image = await image.read()
 
-                image = pipe(
-                    prompt=input_data.prompt,
-                    image=init_image,
-                    num_inference_steps=4,
-                    strength=0.5,
-                    guidance_scale=0.0,
-                ).images[0]
+#                 image = pipe(
+#                     prompt=input_data.prompt,
+#                     image=init_image,
+#                     num_inference_steps=4,
+#                     strength=0.5,
+#                     guidance_scale=0.0,
+#                 ).images[0]
 
-            # Convert image to bytes
-            img_byte_arr = BytesIO()
-            image.save(img_byte_arr, format="PNG")
-            img_byte_arr.seek(0)
+#             # Convert image to bytes
+#             img_byte_arr = BytesIO()
+#             image.save(img_byte_arr, format="PNG")
+#             img_byte_arr.seek(0)
 
-            # Generate a random UUID
-            file_uuid = uuid.uuid4()
+#             # Generate a random UUID
+#             file_uuid = uuid.uuid4()
 
-            # Define a filename
-            filename = f"{file_uuid}.png"
+#             # Define a filename
+#             filename = f"{file_uuid}.png"
 
-            # Return image as response with Content-Disposition header
-            headers = {"Content-Disposition": f"attachment; filename={filename}"}
-            return StreamingResponse(
-                img_byte_arr, media_type="image/png", headers=headers
-            )
+#             # Return image as response with Content-Disposition header
+#             headers = {"Content-Disposition": f"attachment; filename={filename}"}
+#             return StreamingResponse(
+#                 img_byte_arr, media_type="image/png", headers=headers
+#             )
 
-    except Exception as e:
-        # Log the error message
-        logger.error(f"An error occurred: {str(e)}")
+#     except Exception as e:
+#         # Log the error message
+#         logger.error(f"An error occurred: {str(e)}")
 
-        # Log the full stack trace
-        logger.error("Exception traceback:", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+#         # Log the full stack trace
+#         logger.error("Exception traceback:", exc_info=True)
+#         raise HTTPException(status_code=500, detail=str(e))
