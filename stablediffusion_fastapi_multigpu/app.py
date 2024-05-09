@@ -38,7 +38,7 @@ model_name = os.environ.get("MODEL_NAME", "stabilityai/sdxl-turbo")
 num_gpus = torch.cuda.device_count()
 txt2img_pipes = [
     StableDiffusionPipeline.from_pretrained(
-        model_name, torch_dtype=torch.float16, variant="fp16"
+        model_name, torch_dtype=torch.float16, variant="fp16", safety_checker=None
     ).to(f"cuda:{i}")
     for i in range(num_gpus)
 ]
@@ -52,7 +52,6 @@ img2img_pipes = [
         scheduler=txt2img_pipes[i].scheduler,
         safety_checker=None,
         feature_extractor=None,
-        requires_safety_checker=False,
     ).to(f"cuda:{i}")
     for i in range(num_gpus)
 ]
