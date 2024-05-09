@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, Request, UploadFile
 from fastapi.responses import StreamingResponse
-from diffusers import StableDiffusionPipeline, StableDiffusionImg2ImgPipeline
+from diffusers import AutoPipelineForText2Image, AutoPipelineForImage2Image
 import torch
 from io import BytesIO
 import time
@@ -37,13 +37,13 @@ model_name = os.environ.get("MODEL_NAME", "stabilityai/sdxl-turbo")
 # Load model and assign it to available GPUs
 num_gpus = torch.cuda.device_count()
 txt2img_pipes = [
-    StableDiffusionPipeline.from_pretrained(
+    AutoPipelineForText2Image.from_pretrained(
         model_name, torch_dtype=torch.float16, variant="fp16", safety_checker=None
     ).to(f"cuda:{i}")
     for i in range(num_gpus)
 ]
 img2img_pipes = [
-    StableDiffusionImg2ImgPipeline.from_pretrained(
+    AutoPipelineForImage2Image.from_pretrained(
         model_name,
         vae=txt2img_pipes[i].vae,
         text_encoder=txt2img_pipes[i].text_encoder,
