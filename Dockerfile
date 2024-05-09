@@ -1,7 +1,7 @@
-FROM nvidia/cuda:12.3.2-devel-ubuntu22.04
+FROM pytorch/pytorch:2.3.0-cuda12.1-cudnn8-runtime
 
 # Install dependencies
-RUN apt-get update && apt-get install -y python3
+RUN apt-get update && apt-get install -y python3 python3-pip
 
 # Set the working directory
 WORKDIR /app
@@ -10,7 +10,8 @@ WORKDIR /app
 COPY . .
 
 # Install the stablediffusion_fastapi_multigpu package
-RUN pip install .
+RUN pip3 install .
+# RUN pip3 install torch==2.1.0+cu118 --index-url https://download.pytorch.org/
 
 # Export the port
 EXPOSE 8000

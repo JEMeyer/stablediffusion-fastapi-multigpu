@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, UploadFile
 from fastapi.responses import StreamingResponse
 from diffusers import (
     AutoPipelineForText2Image,
@@ -10,7 +10,6 @@ import logging
 import asyncio
 from pydantic import BaseModel
 import uuid
-import os
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -31,12 +30,18 @@ async def log_duration(request: Request, call_next):
 
     return response
 
+
 # Ensure model is on GPU if available
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Load model and assign it to available GPUs
-num_gpus = 1 #torch.cuda.device_count()
-models = [AutoPipelineForText2Image.from_pretrained('stabilityai/sdxl-turbo', torch_dtype=torch.float16, variant="fp16").to(f"cuda:{i}") for i in range(num_gpus)]
+num_gpus = 1  # torch.cuda.device_count()
+models = [
+    AutoPipelineForText2Image.from_pretrained(
+        "stabilityai/sdxl-turbo", torch_dtype=torch.float16, variant="fp16"
+    ).to(f"cuda:{i}")
+    for i in range(num_gpus)
+]
 
 # Locks for managing concurrent access to GPUs
 gpu_locks = [asyncio.Lock() for _ in range(num_gpus)]
@@ -46,9 +51,11 @@ current_gpu = 0
 
 logger.info(f"{num_gpus} GPU(s) initialized")
 
+
 # Define a Pydantic model for the request body
 class GenerateImageInput(BaseModel):
     prompt: str
+
 
 @app.post("/txt2img")
 async def txt2img(input_data: GenerateImageInput):
@@ -97,8 +104,9 @@ async def txt2img(input_data: GenerateImageInput):
         logger.error("Exception traceback:", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.post("/img2img")
-async def img2img(input_data: GenerateImageInput, image: UploadFile = File(...)):
+async def img2img(input_data: GenerateImageInput, image: UploadFile):
     global current_gpu
 
     try:
@@ -118,7 +126,11 @@ async def img2img(input_data: GenerateImageInput, image: UploadFile = File(...))
                 init_image = await image.read()
 
                 image = pipe(
-                    prompt=input_data.prompt, image=init_image, num_inference_steps=2, strength=0.5, guidance_scale=0.0
+                    prompt=input_data.prompt,
+                    image=init_image,
+                    num_inference_steps=2,
+                    strength=0.5,
+                    guidance_scale=0.0,
                 ).images[0]
 
             # Convert image to bytes
