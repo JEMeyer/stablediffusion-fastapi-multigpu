@@ -12,8 +12,10 @@ This project is a web server that provides a FastAPI-based interface for generat
 
 ### Docker Run
 
-The container accept an environment variable `MODEL_NAME` which will default to `stabilityai/sdxl-turbo`. You can swap out this with any other model that works with the Diffusion pipelines StableDiffusionPipeline and StableDiffusionImg2ImgPipeline.
+The container accepts an environment variable `MODEL_NAME` which will default to `stabilityai/sdxl-turbo`. You can swap out this with any other model that works with the Diffusion pipelines StableDiffusionPipeline and StableDiffusionImg2ImgPipeline.
+
 Ports and gpus are configured with standard docker flags.
+
 To use the most recent stable image, pull the `latest` tag:
 
 ```bash
@@ -143,7 +145,7 @@ Contributions are welcome! If you find any issues or have suggestions for improv
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE).
+This project is licensed under the GPL-3.0 License - see the [LICENSE](LICENSE) file for details.
 
 ## Acknowledgements
 
