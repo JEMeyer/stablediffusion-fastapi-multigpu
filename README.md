@@ -12,7 +12,7 @@ This project is a web server that provides a FastAPI-based interface for generat
 
 ### Docker Run
 
-The container accepts an environment variable `MODEL_NAME` which will default to `stabilityai/sdxl-turbo`. You can swap out this with any other model that works with the Diffusion pipelines StableDiffusionPipeline and StableDiffusionImg2ImgPipeline.
+The container accepts an environment variable `MODEL_NAME` which will default to `stabilityai/sdxl-turbo`. You can swap out this with any other model that works with the Diffusion pipelines AutoPipelineForText2Image and AutoPipelineForImage2Image.
 
 Ports and gpus are configured with standard docker flags.
 
