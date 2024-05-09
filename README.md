@@ -12,10 +12,12 @@ This project is a web server that provides a FastAPI-based interface for generat
 
 ### Docker Run
 
+The container accept an environment variable `MODEL_NAME` which will default to `stabilityai/sdxl-turbo`. You can swap out this with any other model that works with the Diffusion pipelines StableDiffusionPipeline and StableDiffusionImg2ImgPipeline.
+Ports and gpus are configured with standard docker flags.
 To use the most recent stable image, pull the `latest` tag:
 
 ```bash
-docker run -p 8000:8000 ghcr.io/jemeyer/stablediffusion-fastapi-multigpu:latest
+docker run -e MODEL_NAME=stabilityai/sdxl-turbo  -p 8000:8000 ghcr.io/jemeyer/stablediffusion-fastapi-multigpu:latest
 ```
 
 This will start the server and make it accessible at <http://localhost:8000>.
@@ -27,19 +29,19 @@ If you have an NVIDIA GPU and want to use it with the UI, you can pass the --gpu
 - To use all available GPUs:
 
 ```bash
-docker run --gpus all -p 8000:8000 ghcr.io/jemeyer/stablediffusion-fastapi-multigpu:latest
+docker run --gpus all -e MODEL_NAME=stabilityai/sdxl-turbo -p 8000:8000 ghcr.io/jemeyer/stablediffusion-fastapi-multigpu:latest
 ```
 
 - To use a specific number of GPUs:
 
 ```bash
-docker run --gpus 2 -p 8000:8000 ghcr.io/jemeyer/stablediffusion-fastapi-multigpu:latest
+docker run --gpus 2 -e MODEL_NAME=stabilityai/sdxl-turbo -p 8000:8000 ghcr.io/jemeyer/stablediffusion-fastapi-multigpu:latest
 ```
 
 - To use a specific GPU by its device ID (e.g., GPU 2):
 
 ```bash
-docker run --gpus device=2 -p 8000:8000 ghcr.io/jemeyer/stablediffusion-fastapi-multigpu:latest
+docker run --gpus -e MODEL_NAME=stabilityai/sdxl-turbo device=2 -p 8000:8000 ghcr.io/jemeyer/stablediffusion-fastapi-multigpu:latest
 ```
 
 Note that you need to have the NVIDIA Container Toolkit installed on your host for GPU passthrough to work.
@@ -54,6 +56,8 @@ services:
     image: ghcr.io/jemeyer/stablediffusion-fastapi-multigpu:latest
     ports:
       - 8000:8000
+    environment:
+      - MODEL_NAME=stabilityai/sdxl-turbo
     deploy:
       resources:
         reservations:
