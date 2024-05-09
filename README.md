@@ -4,9 +4,9 @@ This project is a web server that provides a FastAPI-based interface for generat
 
 ## Prerequisites
 
-- Python 3.7 or higher
-- NVIDIA GPU with CUDA support
-- Docker (optional, for containerization)
+- Docker
+- NVIDIA GPU with driver installed
+- NVIDIA Container Toolkit
 
 ## Usage
 
