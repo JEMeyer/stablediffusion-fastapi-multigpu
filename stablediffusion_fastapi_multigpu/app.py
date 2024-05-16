@@ -136,7 +136,9 @@ async def img2img(prompt: str = Form(...), image: UploadFile = File(...)):
                 # Ensure to use the selected GPU for computations
                 pipe = img2img_pipes[gpu_id]
 
-                init_image = Image.open(BytesIO(await image.read()))
+                init_image = Image.open(BytesIO(await image.read())).to(
+                    dtype=torch.float16
+                )
 
                 image = pipe(
                     prompt=prompt,
