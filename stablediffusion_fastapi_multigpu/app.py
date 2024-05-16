@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Request, UploadFile, File, Form
+from fastapi import FastAPI, HTTPException, Request, UploadFile, File
 from fastapi.responses import StreamingResponse
 from diffusers import AutoPipelineForText2Image, AutoPipelineForImage2Image
 import torch
@@ -7,10 +7,12 @@ import time
 import logging
 import asyncio
 from pydantic import BaseModel
-import uuid
+from uuid import uuid4
 import os
 from PIL import Image
 import numpy as np
+import shutil
+from pathlib import Path
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -66,6 +68,10 @@ current_gpu = 0
 
 logger.info(f"{num_gpus} GPU(s) initialized")
 
+# Directory where uploaded images will be stored
+IMAGE_DIR = "uploaded_images"
+os.makedirs(IMAGE_DIR, exist_ok=True)
+
 
 class Txt2ImgInput(BaseModel):
     prompt: str
@@ -99,7 +105,7 @@ async def txt2img(input_data: Txt2ImgInput):
             img_byte_arr.seek(0)
 
             # Generate a random UUID
-            file_uuid = uuid.uuid4()
+            file_uuid = uuid4()
 
             # Define a filename
             filename = f"{file_uuid}.png"
@@ -119,13 +125,46 @@ async def txt2img(input_data: Txt2ImgInput):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/upload")
+async def upload_image(file: UploadFile = File(...)):
+    # Generate a unique file ID
+    file_id = str(uuid4())
+    # Extract the file extension from the original filename
+    extension = Path(file.filename).suffix
+    # Construct the file path with the unique ID and original extension
+    file_path = os.path.join(IMAGE_DIR, f"{file_id}{extension}")
+
+    # Save the uploaded file to the constructed path
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    # Load the image and convert to PyTorch tensor
+    pil_image = Image.open(file_path).convert("RGB")
+    np_image = np.array(pil_image) / 255.0
+    np_image = np_image.astype(np.float32)
+    tensor_image = (
+        torch.from_numpy(np_image).permute(2, 0, 1).unsqueeze(0).to(torch.float16)
+    )
+
+    # Save the tensor to disk
+    tensor_path = os.path.join(IMAGE_DIR, f"{file_id}.pt")
+    torch.save(tensor_image, tensor_path)
+
+    return {"file_id": file_id}
+
+
 class Img2ImgInput(BaseModel):
-    prompt: str = Form()
-    image: UploadFile = File()
+    prompt: str
+    file_id: str
 
 
 @app.post("/img2img")
 async def img2img(input_data: Img2ImgInput):
+    # Construct the tensor file path from the file ID
+    tensor_path = os.path.join(IMAGE_DIR, f"{input_data.file_id}.pt")
+    if not os.path.exists(tensor_path):
+        raise HTTPException(status_code=404, detail="File not found")
+
     global current_gpu
     try:
         # Select a GPU using round-robin
@@ -141,21 +180,8 @@ async def img2img(input_data: Img2ImgInput):
                 # Ensure to use the selected GPU for computations
                 pipe = img2img_pipes[gpu_id]
 
-                # Read image bytes and convert to PIL Image
-                image_bytes = await input_data.image.read()
-                pil_image = Image.open(BytesIO(image_bytes)).convert("RGB")
-
-                # Convert PIL Image to numpy array and scale to [0, 1]
-                np_image = np.array(pil_image) / 255.0
-                np_image = np_image.astype(np.float32)
-
-                # Convert numpy array to PyTorch tensor and adjust to FP16
-                tensor_image = (
-                    torch.from_numpy(np_image)
-                    .permute(2, 0, 1)
-                    .unsqueeze(0)
-                    .to(torch.float16)
-                )
+                # Load the pre-processed tensor
+                tensor_image = torch.load(tensor_path)
 
                 image = pipe(
                     prompt=input_data.prompt,
@@ -171,7 +197,7 @@ async def img2img(input_data: Img2ImgInput):
             img_byte_arr.seek(0)
 
             # Generate a random UUID
-            file_uuid = uuid.uuid4()
+            file_uuid = uuid4()
 
             # Define a filename
             filename = f"{file_uuid}.png"
