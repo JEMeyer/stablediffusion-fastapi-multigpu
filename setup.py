@@ -15,5 +15,6 @@ setup(
         "Pillow",
         "xformers",
         "torch",
+        "torchvision",
     ],
 )

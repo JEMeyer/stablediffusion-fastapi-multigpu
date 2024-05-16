@@ -10,6 +10,7 @@ from pydantic import BaseModel
 import uuid
 import os
 from PIL import Image
+from torchvision import transforms
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -39,7 +40,7 @@ model_name = os.environ.get("MODEL_NAME", "stabilityai/sdxl-turbo")
 num_gpus = torch.cuda.device_count()
 txt2img_pipes = [
     AutoPipelineForText2Image.from_pretrained(
-        model_name, torch_dtype=torch.float16, variant="fp16", safety_checker=None
+        model_name, torch_dtype=torch.float16, variant="fp16"
     ).to(f"cuda:{i}")
     for i in range(num_gpus)
 ]
@@ -140,15 +141,16 @@ async def img2img(input_data: Img2ImgInput):
                 # Ensure to use the selected GPU for computations
                 pipe = img2img_pipes[gpu_id]
 
-                init_image = Image.open(BytesIO(await input_data.image.file))
-
-                from torchvision import transforms
+                init_image = Image.open(BytesIO(await input_data.image.read())).convert(
+                    "RGB"
+                )
 
                 # Convert the PIL image to a PyTorch tensor
-                init_image = transforms.ToTensor()(init_image).unsqueeze(0)
+                init_image = transforms.ToTensor()(init_image).unsqueeze(0).to(device)
 
-                # Cast the init_image tensor to float16
-                init_image = init_image.to(dtype=torch.float16)
+                # Cast the init_image tensor to float16 if the model is using float16
+                if pipe.device.type == "cuda" and pipe.device.index is not None:
+                    init_image = init_image.to(dtype=torch.float16)
 
                 image = pipe(
                     prompt=input_data.prompt,

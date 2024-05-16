@@ -11,7 +11,6 @@ COPY . .
 
 # Install the stablediffusion_fastapi_multigpu package
 RUN pip3 install .
-# RUN pip3 install torch==2.1.0+cu118 --index-url https://download.pytorch.org/
 
 # Export the port
 EXPOSE 8000
