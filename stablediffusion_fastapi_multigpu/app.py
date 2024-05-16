@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Request, UploadFile
+from fastapi import FastAPI, HTTPException, Request, UploadFile, File
 from fastapi.responses import StreamingResponse
 from diffusers import AutoPipelineForText2Image, AutoPipelineForImage2Image
 import torch
@@ -121,7 +121,7 @@ async def txt2img(input_data: Txt2ImgInput):
 
 class Img2ImgInput(BaseModel):
     prompt: str
-    image: UploadFile
+    image: UploadFile = File(...)
 
 
 @app.post("/img2img")
@@ -141,11 +141,7 @@ async def img2img(input_data: Img2ImgInput):
                 # Ensure to use the selected GPU for computations
                 pipe = img2img_pipes[gpu_id]
 
-                logger.info(await input_data.image.read())
-
-                init_image = Image.open(BytesIO(await input_data.image.read())).convert(
-                    "RGB"
-                )
+                init_image = Image.open(BytesIO(await input_data.image.read()))
 
                 # Convert the PIL image to a PyTorch tensor
                 init_image = transforms.ToTensor()(init_image).unsqueeze(0).to(device)
@@ -153,8 +149,6 @@ async def img2img(input_data: Img2ImgInput):
                 # Cast the init_image tensor to float16 if the model is using float16
                 if pipe.device.type == "cuda" and pipe.device.index is not None:
                     init_image = init_image.to(dtype=torch.float16)
-
-                logger.info(init_image)
 
                 image = pipe(
                     prompt=input_data.prompt,
