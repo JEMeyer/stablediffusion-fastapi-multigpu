@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Request, UploadFile, File
+from fastapi import FastAPI, HTTPException, Request, UploadFile, File, Form
 from fastapi.responses import StreamingResponse
 from diffusers import AutoPipelineForText2Image, AutoPipelineForImage2Image
 import torch
@@ -10,7 +10,7 @@ from pydantic import BaseModel
 import uuid
 import os
 from PIL import Image
-from torchvision import transforms
+import numpy as np
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -120,8 +120,8 @@ async def txt2img(input_data: Txt2ImgInput):
 
 
 class Img2ImgInput(BaseModel):
-    prompt: str
-    image: UploadFile = File(...)
+    prompt: str = Form()
+    image: UploadFile = File()
 
 
 @app.post("/img2img")
@@ -141,18 +141,25 @@ async def img2img(input_data: Img2ImgInput):
                 # Ensure to use the selected GPU for computations
                 pipe = img2img_pipes[gpu_id]
 
-                init_image = Image.open(BytesIO(await input_data.image.read()))
+                # Read image bytes and convert to PIL Image
+                image_bytes = await input_data.image.read()
+                pil_image = Image.open(BytesIO(image_bytes)).convert("RGB")
 
-                # Convert the PIL image to a PyTorch tensor
-                init_image = transforms.ToTensor()(init_image).unsqueeze(0).to(device)
+                # Convert PIL Image to numpy array and scale to [0, 1]
+                np_image = np.array(pil_image) / 255.0
+                np_image = np_image.astype(np.float32)
 
-                # Cast the init_image tensor to float16 if the model is using float16
-                if pipe.device.type == "cuda" and pipe.device.index is not None:
-                    init_image = init_image.to(dtype=torch.float16)
+                # Convert numpy array to PyTorch tensor and adjust to FP16
+                tensor_image = (
+                    torch.from_numpy(np_image)
+                    .permute(2, 0, 1)
+                    .unsqueeze(0)
+                    .to(torch.float16)
+                )
 
                 image = pipe(
                     prompt=input_data.prompt,
-                    image=init_image,
+                    image=tensor_image,
                     num_inference_steps=4,
                     strength=0.5,
                     guidance_scale=0.0,
