@@ -140,7 +140,7 @@ async def img2img(input_data: Img2ImgInput):
                 # Ensure to use the selected GPU for computations
                 pipe = img2img_pipes[gpu_id]
 
-                init_image = Image.open(BytesIO(await input_data.image.read()))
+                init_image = Image.open(BytesIO(await input_data.image.file))
 
                 from torchvision import transforms
 
