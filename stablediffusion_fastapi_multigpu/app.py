@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Request, UploadFile, File, Form
+from fastapi import FastAPI, HTTPException, Request, UploadFile
 from fastapi.responses import StreamingResponse
 from diffusers import AutoPipelineForText2Image, AutoPipelineForImage2Image
 import torch
@@ -66,13 +66,12 @@ current_gpu = 0
 logger.info(f"{num_gpus} GPU(s) initialized")
 
 
-# Define a Pydantic model for the request body
-class GenerateImageInput(BaseModel):
+class Txt2ImgInput(BaseModel):
     prompt: str
 
 
 @app.post("/txt2img")
-async def txt2img(input_data: GenerateImageInput):
+async def txt2img(input_data: Txt2ImgInput):
     global current_gpu
 
     try:
@@ -119,8 +118,13 @@ async def txt2img(input_data: GenerateImageInput):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+class Img2ImgInput(BaseModel):
+    prompt: str
+    image: UploadFile
+
+
 @app.post("/img2img")
-async def img2img(prompt: str = Form(...), image: UploadFile = File(...)):
+async def img2img(input_data: Img2ImgInput):
     global current_gpu
     try:
         # Select a GPU using round-robin
@@ -136,12 +140,18 @@ async def img2img(prompt: str = Form(...), image: UploadFile = File(...)):
                 # Ensure to use the selected GPU for computations
                 pipe = img2img_pipes[gpu_id]
 
-                init_image = Image.open(BytesIO(await image.read())).to(
-                    dtype=torch.float16
-                )
+                init_image = Image.open(BytesIO(await input_data.image.read()))
+
+                from torchvision import transforms
+
+                # Convert the PIL image to a PyTorch tensor
+                init_image = transforms.ToTensor()(init_image).unsqueeze(0)
+
+                # Cast the init_image tensor to float16
+                init_image = init_image.to(dtype=torch.float16)
 
                 image = pipe(
-                    prompt=prompt,
+                    prompt=input_data.prompt,
                     image=init_image,
                     num_inference_steps=4,
                     strength=0.5,
