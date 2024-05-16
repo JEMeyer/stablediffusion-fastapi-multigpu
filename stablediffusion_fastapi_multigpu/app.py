@@ -141,7 +141,7 @@ async def img2img(input_data: Img2ImgInput):
                 # Ensure to use the selected GPU for computations
                 pipe = img2img_pipes[gpu_id]
 
-                print(await input_data.image.read())
+                logger.info(await input_data.image.read())
 
                 init_image = Image.open(BytesIO(await input_data.image.read())).convert(
                     "RGB"
@@ -154,7 +154,7 @@ async def img2img(input_data: Img2ImgInput):
                 if pipe.device.type == "cuda" and pipe.device.index is not None:
                     init_image = init_image.to(dtype=torch.float16)
 
-                print(init_image)
+                logger.info(init_image)
 
                 image = pipe(
                     prompt=input_data.prompt,
