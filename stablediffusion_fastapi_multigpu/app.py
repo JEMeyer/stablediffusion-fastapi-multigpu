@@ -141,7 +141,7 @@ async def upload_image(file: UploadFile = File(...)):
     # Load the image and convert to PyTorch tensor
     pil_image = Image.open(file_path).convert("RGB")
     np_image = np.array(pil_image) / 255.0
-    np_image = np_image.astype(np.float32)
+    np_image = np_image.astype(np.float16)
     tensor_image = (
         torch.from_numpy(np_image).permute(2, 0, 1).unsqueeze(0).to(torch.float16)
     )
