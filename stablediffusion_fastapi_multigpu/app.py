@@ -49,6 +49,8 @@ txt2img_pipes = [
 img2img_pipes = [
     AutoPipelineForImage2Image.from_pretrained(
         model_name,
+        torch_dtype=torch.float16,
+        variant="fp16",
         vae=txt2img_pipes[i].vae,
         text_encoder=txt2img_pipes[i].text_encoder,
         tokenizer=txt2img_pipes[i].tokenizer,
