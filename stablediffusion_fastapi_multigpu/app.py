@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException, Request, UploadFile, File
 from fastapi.responses import StreamingResponse
 from diffusers import AutoPipelineForText2Image, AutoPipelineForImage2Image
 import torch
+import torch._dynamo
 from io import BytesIO
 import time
 import logging
@@ -16,6 +17,8 @@ from pathlib import Path
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+torch._dynamo.config.suppress_errors = True
 
 app = FastAPI()
 
