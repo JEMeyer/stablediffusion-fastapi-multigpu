@@ -46,6 +46,12 @@ txt2img_pipes = [
     ).to(f"cuda:{i}")
     for i in range(num_gpus)
 ]
+
+# Compile the UNet model for potential speedup
+for pipe in txt2img_pipes:
+    pipe.unet = torch.compile(pipe.unet, mode="reduce-overhead", fullgraph=True)
+    pipe.unet.to(memory_format=torch.channels_last)
+
 img2img_pipes = [
     AutoPipelineForImage2Image.from_pretrained(
         model_name,
