@@ -2,7 +2,6 @@ from fastapi import FastAPI, HTTPException, Request, UploadFile, File
 from fastapi.responses import StreamingResponse
 from diffusers import AutoPipelineForText2Image, AutoPipelineForImage2Image
 import torch
-import torch._dynamo
 from io import BytesIO
 import time
 import logging
@@ -17,8 +16,6 @@ from pathlib import Path
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-torch._dynamo.config.suppress_errors = True
 
 app = FastAPI()
 
@@ -49,11 +46,6 @@ txt2img_pipes = [
     ).to(f"cuda:{i}")
     for i in range(num_gpus)
 ]
-
-# Compile the UNet model for potential speedup
-for pipe in txt2img_pipes:
-    pipe.unet = torch.compile(pipe.unet, mode="reduce-overhead", fullgraph=True)
-    pipe.unet.to(memory_format=torch.channels_last)
 
 img2img_pipes = [
     AutoPipelineForImage2Image.from_pretrained(
