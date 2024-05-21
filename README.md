@@ -91,8 +91,15 @@ docker-compose up -d
 
 ### Endpoints
 
-- `/txt2img`: Generate an image from a text prompt.
-- `/img2img`: Generate an image based on an input image and a text prompt.
+- `/txt2img`: Generate an image from a text prompt
+  - `curl -H "Content-Type: application/json" -d '{"prompt": "PROMPT"}' http://IP_ADDR:8000/txt2img --output t2i_generated_image.png`
+  - Returns a fastAPI StreamingResponse of type `image/png`
+- `/upload`: Upload an image (to then be refereneced by `img2img`)
+  - `curl -X POST -F "file=@./t2i_generated_image.jpg" http://IP_ADDR:8000/upload`
+  - Returns `{"file_id":"FILE_ID"}`
+- `/img2img`: Generate an image based on an input image id and a text prompt
+  - `curl -H "Content-Type: application/json" -d '{"file_id":"FILE_ID", "prompt": "PROMPT"}' http://IP_ADDR:8000/img2img --output i2igenerated_image.png`
+  - Returns a fastAPI StreamingResponse of type `image/png`
 
 This server uses `-turbo` SD models, and as such no negPrompt is used.
 
