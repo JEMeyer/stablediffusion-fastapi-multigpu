@@ -103,6 +103,17 @@ docker-compose up -d
 
 This server uses `-turbo` SD models, and as such no negPrompt is used.
 
+## Hardware
+
+Below you will find a comparison table that outlines the specifications of various GPUs, the model used, the amount of VRAM required for operation, and the observed range for image generation speed. It's important to note that these values are not hard limits but rather observations based on running these models under certain conditions. As such, your results may vary.
+
+| GPU                     | Model Used | VRAM Used | Generation Speed Range |
+| ----------------------- | ---------- | --------- | ---------------------- |
+| NVIDIA GeForce RTX 3090 | SDXL-Turbo | 10.8 GiB  | .65 - .70 seconds      |
+| NVIDIA GeForce RTX 3090 | SD-Turbo   | 4.25 GiB  | .42 - .50 seconds      |
+| NVIDIA Tesla P100       | SDXL-Turbo | 10 GiB    | 1.3 - 1.5 seconds      |
+| NVIDIA Tesla P100       | SD-Turbo   | 4.7 GiB   | 1.8 - 2 seconds        |
+
 ## Development
 
 1. Clone the repository:
