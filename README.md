@@ -111,8 +111,8 @@ Below you will find a comparison table that outlines the specifications of vario
 | ----------------------- | ---------- | --------- | ---------------------- |
 | NVIDIA GeForce RTX 3090 | SDXL-Turbo | 10.8 GiB  | .65 - .70 seconds      |
 | NVIDIA GeForce RTX 3090 | SD-Turbo   | 4.25 GiB  | .42 - .50 seconds      |
-| NVIDIA Tesla P100       | SDXL-Turbo | 10 GiB    | 1.3 - 1.5 seconds      |
-| NVIDIA Tesla P100       | SD-Turbo   | 4.7 GiB   | 1.8 - 2 seconds        |
+| NVIDIA Tesla P100       | SDXL-Turbo | 10 GiB    | 1.8 - 2 seconds        |
+| NVIDIA Tesla P100       | SD-Turbo   | 4.7 GiB   | 1.3 - 1.5 seconds      |
 
 ## Development
 
