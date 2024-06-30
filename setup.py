@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name="stablediffusion-fastapi-multigpu",
+    name="stablediffusion-fastapi-server",
     version="1.0",
     packages=find_packages(),
     install_requires=[

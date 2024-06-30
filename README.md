@@ -1,6 +1,6 @@
 # Stable Diffusion FastAPI Multi-GPU Server
 
-This project is a web server that provides a FastAPI-based interface for generating images using Stable Diffusion models. It supports both text-to-image (`/txt2img`) and image-to-image (`/img2img`) generation endpoints. The server is designed to distribute the workload across multiple GPUs in a round-robin fashion, allowing for efficient utilization of available hardware resources.
+This project is a web server that provides a FastAPI-based interface for generating images using Stable Diffusion models. It supports both text-to-image (`/txt2img`) and image-to-image (`/img2img`) generation endpoints. The server is designed to only run on 1 gpu, if multiple are needed, use ai-maestro-router in conjunction with multiple `stablediffusion-fastapi-server` instances
 
 ## Prerequisites
 
@@ -19,7 +19,7 @@ Ports and gpus are configured with standard docker flags.
 To use the most recent stable image, pull the `latest` tag:
 
 ```bash
-docker run -e MODEL_NAME=stabilityai/sdxl-turbo  -p 8000:8000 ghcr.io/jemeyer/stablediffusion-fastapi-multigpu:latest
+docker run -e MODEL_NAME=stabilityai/sdxl-turbo  -p 8000:8000 ghcr.io/jemeyer/stablediffusion-fastapi-server:latest
 ```
 
 This will start the server and make it accessible at <http://localhost:8000>.
@@ -28,22 +28,22 @@ This will start the server and make it accessible at <http://localhost:8000>.
 
 If you have an NVIDIA GPU and want to use it with the UI, you can pass the --gpus flag to docker run:
 
-- To use all available GPUs:
+- To use all available GPUs (only 1 - if multiple are needed, use ai-maestro-router):
 
 ```bash
-docker run --gpus all -e MODEL_NAME=stabilityai/sdxl-turbo -p 8000:8000 ghcr.io/jemeyer/stablediffusion-fastapi-multigpu:latest
+docker run --gpus all -e MODEL_NAME=stabilityai/sdxl-turbo -p 8000:8000 ghcr.io/jemeyer/stablediffusion-fastapi-server:latest
 ```
 
 - To use a specific number of GPUs:
 
 ```bash
-docker run --gpus 2 -e MODEL_NAME=stabilityai/sdxl-turbo -p 8000:8000 ghcr.io/jemeyer/stablediffusion-fastapi-multigpu:latest
+docker run --gpus 1 -e MODEL_NAME=stabilityai/sdxl-turbo -p 8000:8000 ghcr.io/jemeyer/stablediffusion-fastapi-server:latest
 ```
 
-- To use a specific GPU by its device ID (e.g., GPU 2):
+- To use a specific GPU by its device ID (e.g., GPU 2), and define a different model_name:
 
 ```bash
-docker run --gpus -e MODEL_NAME=stabilityai/sdxl-turbo device=2 -p 8000:8000 ghcr.io/jemeyer/stablediffusion-fastapi-multigpu:latest
+docker run --gpus -e MODEL_NAME=stabilityai/sd-turbo device=2 -p 8000:8000 ghcr.io/jemeyer/stablediffusion-fastapi-server:latest
 ```
 
 Note that you need to have the NVIDIA Container Toolkit installed on your host for GPU passthrough to work.
@@ -54,8 +54,8 @@ You can also use Stable Diffusion WebUI with Docker Compose. Here's an example d
 
 ```yaml
 services:
-  stablediffusion-fastapi-multigpu:
-    image: ghcr.io/jemeyer/stablediffusion-fastapi-multigpu:latest
+  stablediffusion-fastapi-server:
+    image: ghcr.io/jemeyer/stablediffusion-fastapi-server:latest
     ports:
       - 8000:8000
     environment:
@@ -80,8 +80,6 @@ reservations:
       device_ids: ["2"]
       capabilities: [gpu]
 ```
-
-To use all available GPUs, set count to `all`.
 
 Start the container with:
 
@@ -119,15 +117,15 @@ Below you will find a comparison table that outlines the specifications of vario
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/jemeyer/stable-diffusion-fastapi-multigpu.git
-   cd stable-diffusion-fastapi-multigpu
+   git clone https://github.com/jemeyer/stable-diffusion-fastapi-server.git
+   cd stable-diffusion-fastapi-server
    ```
 
 2. Set up a virtual environment using `pyenv`:
 
    ```bash
-   pyenv virtualenv 3.10.13 stable-diffusion-fastapi-multigpu
-   pyenv local stable-diffusion-fastapi-multigpu
+   pyenv virtualenv 3.10.13 stable-diffusion-fastapi-server
+   pyenv local stable-diffusion-fastapi-server
    ```
 
 3. Install the required dependencies:
@@ -146,13 +144,13 @@ The server can be dockerized for easy deployment and scalability. A Dockerfile i
 To build the Docker image, run the following command:
 
 ```bash
-docker build -t jemeyer/stablediffusion-fastapi-multigpu .
+docker build -t jemeyer/stablediffusion-fastapi-server .
 ```
 
 To run the Docker container, use the following command:
 
 ```bash
-docker run -p 8000:8000 jemeyer/stablediffusion-fastapi-multigpu
+docker run -p 8000:8000 jemeyer/stablediffusion-fastapi-server
 ```
 
 The server will be accessible at `http://localhost:8000`.

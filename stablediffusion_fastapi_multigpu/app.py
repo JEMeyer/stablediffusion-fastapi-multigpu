@@ -34,42 +34,30 @@ async def log_duration(request: Request, call_next):
     return response
 
 
-# Ensure model is on GPU if available
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# Ensure model is on GPU
+device = torch.device("cuda") if torch.cuda.is_available() else "cpu"
 model_name = os.environ.get("MODEL_NAME", "stabilityai/sdxl-turbo")
 
-# Load model and assign it to available GPUs
-num_gpus = torch.cuda.device_count()
-txt2img_pipes = [
-    AutoPipelineForText2Image.from_pretrained(
-        model_name, torch_dtype=torch.float16, variant="fp16"
-    ).to(f"cuda:{i}")
-    for i in range(num_gpus)
-]
+# Load models and assign them to the GPU
+txt2img_pipeline = AutoPipelineForText2Image.from_pretrained(
+    model_name, torch_dtype=torch.float16, variant="fp16"
+).to(device)
+img2img_pipeline = AutoPipelineForImage2Image.from_pretrained(
+    model_name,
+    torch_dtype=torch.float16,
+    variant="fp16",
+    vae=txt2img_pipeline.vae,
+    text_encoder=txt2img_pipeline.text_encoder,
+    tokenizer=txt2img_pipeline.tokenizer,
+    unet=txt2img_pipeline.unet,
+    scheduler=txt2img_pipeline.scheduler,
+    safety_checker=None,
+    feature_extractor=None,
+).to(device)
 
-img2img_pipes = [
-    AutoPipelineForImage2Image.from_pretrained(
-        model_name,
-        torch_dtype=torch.float16,
-        variant="fp16",
-        vae=txt2img_pipes[i].vae,
-        text_encoder=txt2img_pipes[i].text_encoder,
-        tokenizer=txt2img_pipes[i].tokenizer,
-        unet=txt2img_pipes[i].unet,
-        scheduler=txt2img_pipes[i].scheduler,
-        safety_checker=None,
-        feature_extractor=None,
-    ).to(f"cuda:{i}")
-    for i in range(num_gpus)
-]
-
-# Locks for managing concurrent access to GPUs
-gpu_locks = [asyncio.Lock() for _ in range(num_gpus)]
-
-# Counter for round-robin GPU selection
-current_gpu = 0
-
-logger.info(f"{num_gpus} GPU(s) initialized")
+# Locks for managing concurrent access in case not behind router
+gpu_lock = asyncio.Lock()
+logger.info("GPU initialized")
 
 # Directory where uploaded images will be stored
 IMAGE_DIR = "uploaded_images"
@@ -78,28 +66,22 @@ os.makedirs(IMAGE_DIR, exist_ok=True)
 
 class Txt2ImgInput(BaseModel):
     prompt: str
+    num_inference_steps: int = 4
 
 
 @app.post("/txt2img")
 async def txt2img(input_data: Txt2ImgInput):
-    global current_gpu
-
     try:
-        # Select a GPU using round-robin
-        gpu_id = current_gpu % num_gpus
-
-        # Update the GPU counter
-        current_gpu += 1
-
         # Lock the selected GPU to prevent other requests from using it simultaneously
-        async with gpu_locks[gpu_id]:
+        async with gpu_lock:
             # Ensure no gradients are calculated for faster inference
             with torch.no_grad():
-                # Ensure to use the selected GPU for computations
-                pipe = txt2img_pipes[gpu_id]
+                pipe = txt2img_pipeline
 
                 image = pipe(
-                    prompt=input_data.prompt, num_inference_steps=4, guidance_scale=0.0
+                    prompt=input_data.prompt,
+                    num_inference_steps=input_data.num_inference_steps,
+                    guidance_scale=0.0,
                 ).images[0]
 
             # Convert image to bytes
@@ -159,6 +141,8 @@ async def upload_image(file: UploadFile = File(...)):
 class Img2ImgInput(BaseModel):
     prompt: str
     file_id: str
+    num_inference_steps: int = 4
+    strength: int = 0.5
 
 
 @app.post("/img2img")
@@ -167,21 +151,12 @@ async def img2img(input_data: Img2ImgInput):
     tensor_path = os.path.join(IMAGE_DIR, f"{input_data.file_id}.pt")
     if not os.path.exists(tensor_path):
         raise HTTPException(status_code=404, detail="File not found")
-
-    global current_gpu
     try:
-        # Select a GPU using round-robin
-        gpu_id = current_gpu % num_gpus
-
-        # Update the GPU counter
-        current_gpu += 1
-
         # Lock the selected GPU to prevent other requests from using it simultaneously
-        async with gpu_locks[gpu_id]:
+        async with gpu_lock:
             # Ensure no gradients are calculated for faster inference
             with torch.no_grad():
-                # Ensure to use the selected GPU for computations
-                pipe = img2img_pipes[gpu_id]
+                pipe = img2img_pipeline
 
                 # Load the pre-processed tensor
                 tensor_image = torch.load(tensor_path)
@@ -189,8 +164,8 @@ async def img2img(input_data: Img2ImgInput):
                 image = pipe(
                     prompt=input_data.prompt,
                     image=tensor_image,
-                    num_inference_steps=4,
-                    strength=0.5,
+                    num_inference_steps=input_data.num_inference_steps,
+                    strength=input_data.strength,
                     guidance_scale=0.0,
                 ).images[0]
 
