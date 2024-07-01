@@ -14,6 +14,8 @@ This project is a web server that provides a FastAPI-based interface for generat
 
 The container accepts an environment variable `MODEL_NAME` which will default to `stabilityai/sdxl-turbo`. You can swap out this with any other model that works with the Diffusion pipelines AutoPipelineForText2Image and AutoPipelineForImage2Image.
 
+In order to make /img2img and /upload work, redis must be setup. Pass in `REDIS_HOST` and `REDIS_PORT` (defaults are `localhost` and `6379`).
+
 Ports and gpus are configured with standard docker flags.
 
 To use the most recent stable image, pull the `latest` tag:
