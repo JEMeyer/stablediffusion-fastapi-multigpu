@@ -11,13 +11,18 @@ from uuid import uuid4
 import os
 from PIL import Image
 import numpy as np
-import shutil
-from pathlib import Path
+from redis import Redis
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
+
+redis_client = Redis(
+    host=os.environ.get("REDIS_HOST", "localhost"),
+    port=os.environ.get("REDIS_PORT", 6379),
+    db=0,
+)
 
 
 @app.middleware("http")
@@ -114,17 +119,15 @@ async def txt2img(input_data: Txt2ImgInput):
 async def upload_image(file: UploadFile = File(...)):
     # Generate a unique file ID
     file_id = str(uuid4())
-    # Extract the file extension from the original filename
-    extension = Path(file.filename).suffix
-    # Construct the file path with the unique ID and original extension
-    file_path = os.path.join(IMAGE_DIR, f"{file_id}{extension}")
 
-    # Save the uploaded file to the constructed path
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+    # Save the uploaded file to memory
+    file_content = await file.read()
+
+    # Store file content in Redis
+    redis_client.set(file_id, file_content)
 
     # Load the image and convert to PyTorch tensor
-    pil_image = Image.open(file_path).convert("RGB")
+    pil_image = Image.open(BytesIO(file_content)).convert("RGB")
     np_image = np.array(pil_image) / 255.0
     np_image = np_image.astype(np.float16)
     tensor_image = (
@@ -132,8 +135,12 @@ async def upload_image(file: UploadFile = File(...)):
     )
 
     # Save the tensor to disk
-    tensor_path = os.path.join(IMAGE_DIR, f"{file_id}.pt")
-    torch.save(tensor_image, tensor_path)
+    tensor_bytes = BytesIO()
+    torch.save(tensor_image, tensor_bytes)
+    tensor_bytes.seek(0)
+
+    # Store tensor in Redis
+    redis_client.set(f"{file_id}_tensor", tensor_bytes.getvalue())
 
     return {"file_id": file_id}
 
@@ -142,24 +149,26 @@ class Img2ImgInput(BaseModel):
     prompt: str
     file_id: str
     num_inference_steps: int = 4
-    strength: int = 0.5
+    strength: float = 0.5
 
 
 @app.post("/img2img")
 async def img2img(input_data: Img2ImgInput):
-    # Construct the tensor file path from the file ID
-    tensor_path = os.path.join(IMAGE_DIR, f"{input_data.file_id}.pt")
-    if not os.path.exists(tensor_path):
+    # Retrieve tensor data from Redis
+    tensor_data = redis_client.get(f"{input_data.file_id}_tensor")
+    if not tensor_data:
         raise HTTPException(status_code=404, detail="File not found")
+
+    tensor_bytes = BytesIO(tensor_data)
+    tensor_bytes.seek(0)
+    tensor_image = torch.load(tensor_bytes)
+
     try:
         # Lock the selected GPU to prevent other requests from using it simultaneously
         async with gpu_lock:
             # Ensure no gradients are calculated for faster inference
             with torch.no_grad():
                 pipe = img2img_pipeline
-
-                # Load the pre-processed tensor
-                tensor_image = torch.load(tensor_path)
 
                 image = pipe(
                     prompt=input_data.prompt,

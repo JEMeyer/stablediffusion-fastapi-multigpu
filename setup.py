@@ -16,5 +16,6 @@ setup(
         "xformers",
         "torch",
         "numpy",
+        "redis",
     ],
 )
